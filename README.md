@@ -17,8 +17,27 @@
 - Python 3.8+
 - PyQt6
 - MySQL数据库（用于本地存储）
+- 支持的操作系统：Windows、macOS、Linux
+- 支持的CPU架构：x86_64、ARM64
 
 ## 安装
+
+### 预编译版本
+
+你可以直接下载适合你系统的预编译版本：
+
+- Windows: 
+  - [Windows x64版本](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+  - [Windows ARM64版本](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+- macOS:
+  - [macOS x64版本](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+  - [macOS Apple Silicon (ARM64)版本](https://github.com/yourusername/jianying-pro-draft-tools/releases) 
+- Linux:
+  - [Linux x64 (AppImage)](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+  - [Linux x64 (DEB)](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+  - [Linux ARM64 (AppImage)](https://github.com/yourusername/jianying-pro-draft-tools/releases)
+
+### 从源码安装
 
 1. 克隆仓库
 
@@ -149,3 +168,112 @@ pytest
 3. 提交更改 (`git commit -m 'Add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 创建 Pull Request
+
+## 打包
+
+本项目提供了针对多种操作系统和CPU架构的打包脚本。
+
+### 打包前准备
+
+确保已安装PyInstaller:
+
+```bash
+pip install pyinstaller
+```
+
+对于macOS平台，如果需要创建DMG安装包，请安装create-dmg:
+
+```bash
+brew install create-dmg
+```
+
+对于Linux平台，如果需要创建AppImage，请下载appimagetool:
+
+```bash
+# 下载appimagetool
+wget "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+chmod +x appimagetool
+sudo mv appimagetool /usr/local/bin/
+```
+
+### Windows打包
+
+打包Windows x64版本:
+
+```bash
+cd build_scripts
+python build_windows.py
+```
+
+打包Windows ARM64版本:
+
+```bash
+cd build_scripts
+python build_arm.py  # 在Windows ARM设备上运行
+```
+
+### macOS打包
+
+打包macOS x64版本:
+
+```bash
+cd build_scripts
+python build_macos.py
+```
+
+打包macOS ARM64版本 (Apple Silicon):
+
+```bash
+cd build_scripts
+python build_arm.py  # 在M1/M2 Mac上运行
+```
+
+### Linux打包
+
+打包Linux x64版本:
+
+```bash
+cd build_scripts
+python build_linux.py
+```
+
+打包Linux ARM64版本:
+
+```bash
+cd build_scripts
+python build_arm.py  # 在Linux ARM设备上运行
+```
+
+### 打包输出
+
+打包后的文件将位于项目根目录的`dist`文件夹中，按平台和架构分类:
+
+- Windows: `dist/windows/`
+- macOS: `dist/macos/`
+- Linux: `dist/linux/`
+- ARM架构: `dist/arm-windows/`, `dist/arm-darwin/`, `dist/arm-linux/`
+
+## 多架构适配说明
+
+本项目支持x86_64和ARM64架构。注意事项:
+
+1. ARM64版本需要在对应的ARM设备上构建
+2. PyQt6在不同架构上可能有细微差异，已在代码中处理
+3. 数据库连接在ARM设备上可能需要特殊配置，请参考MySQL文档
+
+## 常见问题
+
+### Q: 在ARM设备上打包失败怎么办?
+A: 确保已安装ARM版本的Python和依赖库。某些库可能需要从源码编译。
+
+### Q: 支持哪些ARM设备?
+A: 支持Windows ARM (如Surface Pro X)、Apple Silicon Mac (M1/M2)、树莓派4及其他ARM Linux设备。
+
+### Q: 如何确认我的系统架构?
+A: 
+- Windows: 在命令提示符中运行 `echo %PROCESSOR_ARCHITECTURE%`
+- macOS/Linux: 在终端中运行 `uname -m`
+
+## 国际化支持
+
+本应用程序默认使用中文界面，但已准备好支持多语言。翻译文件位于`resources/translations/`目录。

@@ -5,21 +5,23 @@ import os
 import sys
 import logging
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QLabel, QPushButton, QStatusBar, QMessageBox, QSystemTrayIcon,
-    QMenu, QApplication
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QSettings
 from PyQt6.QtGui import QIcon, QAction
 
+from qfluentwidgets import (
+    NavigationInterface, NavigationItemPosition, MSFluentWindow,
+    SubtitleLabel, setTheme, Theme, FluentIcon, InfoBar, InfoBarPosition
+)
 from config.settings import get_setting, get_int_setting, get_bool_setting
 from ui.sidebar import Sidebar
 from ui.download_panel import DownloadPanel
 from ui.draft_list_panel import DraftListPanel
 from handlers.message_handler import MessageHandler
 
-class MainWindow(QMainWindow):
-    """Main application window"""
+class MainWindow(MSFluentWindow):
+    """Main application window using Fluent Design"""
     
     def __init__(self):
         """Initialize the main window"""
@@ -50,49 +52,53 @@ class MainWindow(QMainWindow):
             get_int_setting('WINDOW_MIN_HEIGHT', 600)
         )
         
-        # Create central widget and layout
-        central_widget = QWidget()
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        # Apply fluent theme
+        setTheme(Theme.AUTO)
         
-        # Create sidebar
-        self.sidebar = Sidebar(self)
-        main_layout.addWidget(self.sidebar)
-        
-        # Create content area
-        content_widget = QWidget()
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
-        self.tab_widget.setMovable(True)
-        
-        # Create download panel
+        # Create panels
         self.download_panel = DownloadPanel(self)
-        self.tab_widget.addTab(self.download_panel, "下载草稿箱")
-        
-        # Create draft list panel
         self.draft_list_panel = DraftListPanel(self)
-        self.tab_widget.addTab(self.draft_list_panel, "草稿箱列表")
         
-        # Add tab widget to content layout
-        content_layout.addWidget(self.tab_widget)
+        # Add items to navigation interface
+        self.navigation_interface.addItem(
+            routeKey='download',
+            icon=FluentIcon.DOWNLOAD,
+            text='下载草稿箱',
+            position=NavigationItemPosition.TOP
+        )
         
-        # Add content widget to main layout
-        main_layout.addWidget(content_widget)
+        self.navigation_interface.addItem(
+            routeKey='draft_list',
+            icon=FluentIcon.DOCUMENT,
+            text='草稿箱列表',
+            position=NavigationItemPosition.TOP
+        )
         
-        # Set central widget
-        self.setCentralWidget(central_widget)
+        self.navigation_interface.addItem(
+            routeKey='settings',
+            icon=FluentIcon.SETTING,
+            text='设置',
+            position=NavigationItemPosition.BOTTOM
+        )
         
-        # Create status bar
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
+        # Add sub interfaces
+        self.addSubInterface(
+            interface=self.download_panel,
+            routeKey='download',
+            title='下载草稿箱'
+        )
         
-        # Show initial status
-        self.status_bar.showMessage("就绪")
+        self.addSubInterface(
+            interface=self.draft_list_panel,
+            routeKey='draft_list',
+            title='草稿箱列表'
+        )
+        
+        # Set default route
+        self.navigation_interface.setCurrentItem('download')
+        
+        # Add app version label to status bar
+        self.statusBar().showMessage(f"版本: {get_setting('APP_VERSION', '1.0.0')}")
         
     def setup_system_tray(self):
         """Set up system tray icon and menu"""
@@ -200,22 +206,40 @@ class MainWindow(QMainWindow):
         
     def show_message(self, message, message_type="info", duration=3000):
         """
-        Show a message in the status bar and as a toast notification
+        Show a message using Fluent InfoBar
         
         Args:
             message (str): Message to display
             message_type (str): Type of message (info, success, warning, error)
             duration (int): Duration in milliseconds
         """
-        # Show in status bar
-        self.status_bar.showMessage(message, duration)
+        # Map message type to InfoBar type
+        title = "信息"
+        icon = None
         
-        # Show as toast notification
         if message_type == "info":
-            self.message_handler.show_info(message, duration)
+            title = "信息"
+            icon = FluentIcon.INFORMATION
         elif message_type == "success":
-            self.message_handler.show_success(message, duration)
+            title = "成功"
+            icon = FluentIcon.COMPLETED
         elif message_type == "warning":
-            self.message_handler.show_warning(message, duration)
+            title = "警告"
+            icon = FluentIcon.WARNING
         elif message_type == "error":
-            self.message_handler.show_error(message, duration) 
+            title = "错误" 
+            icon = FluentIcon.ERROR
+        
+        # Show InfoBar
+        InfoBar.success(
+            title=title,
+            content=message,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=duration,
+            parent=self
+        )
+        
+        # Also show in status bar
+        self.statusBar().showMessage(message, duration) 

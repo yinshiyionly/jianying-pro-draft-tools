@@ -6,6 +6,8 @@ import os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTranslator, QLocale
 from PyQt6.QtGui import QFont, QFontDatabase
+from qfluentwidgets import FluentTranslator, setTheme, Theme
+
 from config.settings import load_settings
 from ui.main_window import MainWindow
 from utils.logger import setup_logger
@@ -43,6 +45,13 @@ def main():
     else:
         logger.warning("找不到合适的中文字体，请安装中文字体包")
     
+    # 设置Fluent Design主题和翻译
+    setTheme(Theme.AUTO)
+    
+    # 使用Fluent界面翻译器
+    translator = FluentTranslator()
+    app.installTranslator(translator)
+    
     # Setup exception handler
     setup_exception_handler(app)
     
@@ -54,4 +63,4 @@ def main():
     sys.exit(app.exec())
 
 if __name__ == "__main__":
-    main() 
+    main()

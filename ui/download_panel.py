@@ -4,13 +4,19 @@
 import os
 import logging
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QGroupBox, QFormLayout, QProgressBar,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QCheckBox, QComboBox, QSpinBox
+    QAbstractItemView
 )
 from PyQt6.QtCore import Qt, pyqtSlot, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QFont
+
+from qfluentwidgets import (
+    LineEdit, PushButton, ProgressBar, ComboBox, 
+    FluentIcon, CardWidget, SpinBox, CheckBox,
+    StrongBodyLabel, BodyLabel, CaptionLabel,
+    InfoBar, InfoBarPosition, TableWidget
+)
 
 from models.draft_model import DraftModel
 from services.draft_service import DraftService
@@ -144,48 +150,81 @@ class DownloadPanel(QWidget):
         """Set up the user interface"""
         # Create main layout
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
         
-        # Create input group
-        input_group = QGroupBox("草稿箱信息")
-        input_layout = QFormLayout(input_group)
+        # Create input card
+        input_card = CardWidget(self)
+        input_layout = QVBoxLayout(input_card)
+        input_layout.setContentsMargins(20, 20, 20, 20)
+        input_layout.setSpacing(16)
         
-        # Add UUID input
-        self.uuid_input = QLineEdit()
+        # Add card title
+        title_label = StrongBodyLabel("草稿箱信息", input_card)
+        input_layout.addWidget(title_label)
+        
+        # Add UUID input with label
+        uuid_layout = QVBoxLayout()
+        uuid_layout.setSpacing(6)
+        
+        uuid_label = BodyLabel("草稿箱UUID:", input_card)
+        uuid_layout.addWidget(uuid_label)
+        
+        self.uuid_input = LineEdit(input_card)
         self.uuid_input.setPlaceholderText("输入草稿箱UUID")
-        input_layout.addRow("草稿箱UUID:", self.uuid_input)
+        uuid_layout.addWidget(self.uuid_input)
         
-        # Add save path input
+        input_layout.addLayout(uuid_layout)
+        
+        # Add save path input with label
+        path_layout = QVBoxLayout()
+        path_layout.setSpacing(6)
+        
+        path_label = BodyLabel("保存路径:", input_card)
+        path_layout.addWidget(path_label)
+        
         save_path_layout = QHBoxLayout()
-        self.save_path_input = QLineEdit()
+        save_path_layout.setSpacing(8)
+        
+        self.save_path_input = LineEdit(input_card)
         self.save_path_input.setPlaceholderText("选择保存路径")
         self.save_path_input.setText(os.path.expanduser("~/Downloads"))
         save_path_layout.addWidget(self.save_path_input)
         
-        self.browse_button = QPushButton("浏览...")
+        self.browse_button = PushButton("浏览...", input_card)
+        self.browse_button.setIcon(FluentIcon.FOLDER)
         self.browse_button.clicked.connect(self.browse_save_path)
         save_path_layout.addWidget(self.browse_button)
         
-        input_layout.addRow("保存路径:", save_path_layout)
+        path_layout.addLayout(save_path_layout)
+        input_layout.addLayout(path_layout)
         
         # Add download button
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
-        self.download_button = QPushButton("下载草稿箱")
+        self.download_button = PushButton("下载草稿箱", input_card)
+        self.download_button.setIcon(FluentIcon.DOWNLOAD)
         self.download_button.clicked.connect(self.start_download)
         button_layout.addWidget(self.download_button)
         
-        input_layout.addRow("", button_layout)
+        input_layout.addLayout(button_layout)
         
-        # Add input group to main layout
-        layout.addWidget(input_group)
+        # Add input card to main layout
+        layout.addWidget(input_card)
         
-        # Create download list group
-        list_group = QGroupBox("下载列表")
-        list_layout = QVBoxLayout(list_group)
+        # Create download list card
+        list_card = CardWidget(self)
+        list_layout = QVBoxLayout(list_card)
+        list_layout.setContentsMargins(20, 20, 20, 20)
+        list_layout.setSpacing(16)
+        
+        # Add card title
+        list_title = StrongBodyLabel("下载列表", list_card)
+        list_layout.addWidget(list_title)
         
         # Create table widget
-        self.table = QTableWidget()
+        self.table = TableWidget(list_card)
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["草稿箱名称", "状态", "进度", "操作", "UUID"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -200,8 +239,8 @@ class DownloadPanel(QWidget):
         
         list_layout.addWidget(self.table)
         
-        # Add list group to main layout
-        layout.addWidget(list_group)
+        # Add list card to main layout
+        layout.addWidget(list_card)
         
     def browse_save_path(self):
         """Open file dialog to select save path"""
@@ -250,14 +289,17 @@ class DownloadPanel(QWidget):
                     self.show_message("草稿箱已在下载列表中", "warning")
                     return
                     
-            # Add to table
+            # Add draft to table
             self.add_draft_to_table(draft)
             
             # Start download
             self.download_draft(draft, save_path)
             
-            # Clear UUID input
+            # Clear input field
             self.uuid_input.clear()
+            
+            # Show success message
+            self.show_message(f"开始下载草稿箱: {draft.name}", "success")
             
         except Exception as e:
             self.logger.error("Failed to start download: %s", e)
@@ -265,15 +307,18 @@ class DownloadPanel(QWidget):
             
     def add_draft_to_table(self, draft):
         """
-        Add a draft to the table
+        Add draft to table
         
         Args:
             draft (DraftModel): Draft model
         """
+        # Get current row count
         row = self.table.rowCount()
+        
+        # Insert new row
         self.table.insertRow(row)
         
-        # Set name
+        # Set draft name
         name_item = QTableWidgetItem(draft.name)
         self.table.setItem(row, 0, name_item)
         
@@ -281,22 +326,39 @@ class DownloadPanel(QWidget):
         status_item = QTableWidgetItem(draft.get_status_display())
         self.table.setItem(row, 1, status_item)
         
-        # Set progress bar
-        progress_bar = QProgressBar()
-        progress_bar.setRange(0, 100)
-        progress_bar.setValue(0)
-        progress_bar.setTextVisible(True)
-        self.table.setCellWidget(row, 2, progress_bar)
+        # Create progress bar
+        progress_widget = QWidget()
+        progress_layout = QHBoxLayout(progress_widget)
+        progress_layout.setContentsMargins(5, 2, 5, 2)
         
-        # Set action button
+        progress_bar = ProgressBar(progress_widget)
+        progress_bar.setValue(draft.progress)
+        progress_layout.addWidget(progress_bar)
+        
+        self.table.setCellWidget(row, 2, progress_widget)
+        
+        # Create action buttons
         action_widget = QWidget()
         action_layout = QHBoxLayout(action_widget)
-        action_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.setContentsMargins(5, 2, 5, 2)
+        action_layout.setSpacing(4)
         
-        cancel_button = QPushButton("取消")
-        cancel_button.setFixedWidth(60)
+        cancel_button = PushButton("取消", action_widget)
+        cancel_button.setIcon(FluentIcon.CANCEL)
         cancel_button.clicked.connect(lambda: self.cancel_download(draft.uuid))
         action_layout.addWidget(cancel_button)
+        
+        open_button = PushButton("打开", action_widget)
+        open_button.setIcon(FluentIcon.FOLDER)
+        open_button.clicked.connect(lambda: self.open_draft(draft.uuid))
+        open_button.setEnabled(draft.status == "completed")
+        action_layout.addWidget(open_button)
+        
+        retry_button = PushButton("重试", action_widget)
+        retry_button.setIcon(FluentIcon.SYNC)
+        retry_button.clicked.connect(lambda: self.retry_download(draft.uuid))
+        retry_button.setEnabled(draft.status == "failed")
+        action_layout.addWidget(retry_button)
         
         self.table.setCellWidget(row, 3, action_widget)
         
@@ -312,7 +374,7 @@ class DownloadPanel(QWidget):
             draft (DraftModel): Draft model
             save_path (str): Path to save the draft
         """
-        # Create worker thread
+        # Create download worker
         worker = DownloadWorker(draft.uuid, save_path, self)
         
         # Connect signals
@@ -334,25 +396,45 @@ class DownloadPanel(QWidget):
         Args:
             uuid (str): Draft UUID
         """
-        if uuid in self.download_workers:
+        # Get worker
+        worker = self.download_workers.get(uuid)
+        
+        if worker:
             # Stop worker
-            self.download_workers[uuid].stop()
-            self.download_workers[uuid].wait()
+            worker.stop()
+            
+            # Wait for worker to finish
+            worker.wait()
+            
+            # Remove worker
             del self.download_workers[uuid]
             
             # Update draft status
-            try:
-                self.draft_service.update_draft_status(uuid, "pending", 0)
-            except Exception as e:
-                self.logger.error("Failed to update draft status: %s", e)
-                
-            # Remove from table
+            self.draft_service.update_draft_status(uuid, "pending", 0)
+            
+            # Update table
             for row in range(self.table.rowCount()):
                 if self.table.item(row, 4).text() == uuid:
-                    self.table.removeRow(row)
+                    # Update status
+                    self.table.item(row, 1).setText("已取消")
+                    
+                    # Update progress bar
+                    progress_widget = self.table.cellWidget(row, 2)
+                    progress_bar = progress_widget.layout().itemAt(0).widget()
+                    progress_bar.setValue(0)
+                    
+                    # Update action buttons
+                    action_widget = self.table.cellWidget(row, 3)
+                    layout = action_widget.layout()
+                    
+                    # Enable retry button
+                    retry_button = layout.itemAt(2).widget()
+                    retry_button.setEnabled(True)
+                    
                     break
                     
-            self.show_message("下载已取消", "info")
+            # Show message
+            self.show_message(f"已取消下载", "info")
             
     @pyqtSlot(str)
     def on_download_started(self, uuid):
@@ -362,14 +444,13 @@ class DownloadPanel(QWidget):
         Args:
             uuid (str): Draft UUID
         """
-        # Update status in table
+        # Update table
         for row in range(self.table.rowCount()):
             if self.table.item(row, 4).text() == uuid:
+                # Update status
                 self.table.item(row, 1).setText("下载中")
                 break
                 
-        self.show_message(f"开始下载草稿箱: {uuid}", "info")
-        
     @pyqtSlot(str, int)
     def on_download_progress(self, uuid, progress):
         """
@@ -379,12 +460,13 @@ class DownloadPanel(QWidget):
             uuid (str): Draft UUID
             progress (int): Progress percentage
         """
-        # Update progress in table
+        # Update table
         for row in range(self.table.rowCount()):
             if self.table.item(row, 4).text() == uuid:
-                progress_bar = self.table.cellWidget(row, 2)
-                if progress_bar:
-                    progress_bar.setValue(progress)
+                # Update progress bar
+                progress_widget = self.table.cellWidget(row, 2)
+                progress_bar = progress_widget.layout().itemAt(0).widget()
+                progress_bar.setValue(progress)
                 break
                 
     @pyqtSlot(str)
@@ -395,33 +477,43 @@ class DownloadPanel(QWidget):
         Args:
             uuid (str): Draft UUID
         """
-        # Update status in table
-        for row in range(self.table.rowCount()):
-            if self.table.item(row, 4).text() == uuid:
-                self.table.item(row, 1).setText("已完成")
-                
-                # Change action button
-                action_widget = self.table.cellWidget(row, 3)
-                if action_widget:
-                    # Clear layout
-                    while action_widget.layout().count():
-                        item = action_widget.layout().takeAt(0)
-                        widget = item.widget()
-                        if widget:
-                            widget.deleteLater()
-                            
-                    # Add open button
-                    open_button = QPushButton("打开")
-                    open_button.setFixedWidth(60)
-                    open_button.clicked.connect(lambda: self.open_draft(uuid))
-                    action_widget.layout().addWidget(open_button)
-                break
-                
         # Remove worker
         if uuid in self.download_workers:
             del self.download_workers[uuid]
             
-        self.show_message(f"草稿箱下载完成: {uuid}", "success")
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            return
+            
+        # Update table
+        for row in range(self.table.rowCount()):
+            if self.table.item(row, 4).text() == uuid:
+                # Update status
+                self.table.item(row, 1).setText("已完成")
+                
+                # Update progress bar
+                progress_widget = self.table.cellWidget(row, 2)
+                progress_bar = progress_widget.layout().itemAt(0).widget()
+                progress_bar.setValue(100)
+                
+                # Update action buttons
+                action_widget = self.table.cellWidget(row, 3)
+                layout = action_widget.layout()
+                
+                # Enable open button
+                open_button = layout.itemAt(1).widget()
+                open_button.setEnabled(True)
+                
+                # Disable retry button
+                retry_button = layout.itemAt(2).widget()
+                retry_button.setEnabled(False)
+                
+                break
+                
+        # Show message
+        self.show_message(f"草稿箱 {draft.name} 下载完成", "success")
         
     @pyqtSlot(str, str)
     def on_download_failed(self, uuid, error_message):
@@ -432,59 +524,65 @@ class DownloadPanel(QWidget):
             uuid (str): Draft UUID
             error_message (str): Error message
         """
-        # Update status in table
-        for row in range(self.table.rowCount()):
-            if self.table.item(row, 4).text() == uuid:
-                self.table.item(row, 1).setText("失败")
-                
-                # Change action button
-                action_widget = self.table.cellWidget(row, 3)
-                if action_widget:
-                    # Clear layout
-                    while action_widget.layout().count():
-                        item = action_widget.layout().takeAt(0)
-                        widget = item.widget()
-                        if widget:
-                            widget.deleteLater()
-                            
-                    # Add retry button
-                    retry_button = QPushButton("重试")
-                    retry_button.setFixedWidth(60)
-                    retry_button.clicked.connect(lambda: self.retry_download(uuid))
-                    action_widget.layout().addWidget(retry_button)
-                break
-                
         # Remove worker
         if uuid in self.download_workers:
             del self.download_workers[uuid]
             
-        self.show_message(f"草稿箱下载失败: {error_message}", "error")
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            return
+            
+        # Update table
+        for row in range(self.table.rowCount()):
+            if self.table.item(row, 4).text() == uuid:
+                # Update status
+                self.table.item(row, 1).setText("失败")
+                
+                # Update action buttons
+                action_widget = self.table.cellWidget(row, 3)
+                layout = action_widget.layout()
+                
+                # Enable retry button
+                retry_button = layout.itemAt(2).widget()
+                retry_button.setEnabled(True)
+                
+                break
+                
+        # Show message
+        self.show_message(f"草稿箱 {draft.name} 下载失败: {error_message}", "error")
         
     def open_draft(self, uuid):
         """
-        Open the downloaded draft
+        Open a draft
         
         Args:
             uuid (str): Draft UUID
         """
-        try:
-            # Get draft details
-            draft = self.draft_service.get_draft_by_uuid(uuid)
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft or not draft.local_path:
+            self.show_message("找不到草稿箱本地路径", "error")
+            return
             
-            if not draft:
-                self.show_message("未找到草稿箱", "error")
-                return
-                
+        # Check if path exists
+        if not os.path.exists(draft.local_path):
+            self.show_message("草稿箱本地路径不存在", "error")
+            return
+            
+        try:
             # Open folder
-            path = os.path.join(self.save_path_input.text(), draft.name)
-            if os.path.exists(path):
-                os.startfile(path)
-            else:
-                self.show_message("草稿箱文件夹不存在", "error")
+            if os.name == 'nt':  # Windows
+                os.startfile(draft.local_path)
+            elif os.name == 'posix':  # macOS, Linux
+                import subprocess
+                subprocess.Popen(['xdg-open', draft.local_path])
                 
         except Exception as e:
             self.logger.error("Failed to open draft: %s", e)
-            self.show_message(f"打开失败: {e}", "error")
+            self.show_message(f"无法打开草稿箱: {e}", "error")
             
     def retry_download(self, uuid):
         """
@@ -493,28 +591,61 @@ class DownloadPanel(QWidget):
         Args:
             uuid (str): Draft UUID
         """
-        try:
-            # Get draft details
-            draft = self.draft_service.get_draft_by_uuid(uuid)
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            self.show_message("找不到草稿箱", "error")
+            return
             
-            if not draft:
-                self.show_message("未找到草稿箱", "error")
-                return
-                
-            # Start download
-            self.download_draft(draft, self.save_path_input.text())
+        # Get save path
+        save_path = self.save_path_input.text().strip()
+        
+        if not save_path:
+            self.show_message("请选择保存路径", "warning")
+            return
             
-        except Exception as e:
-            self.logger.error("Failed to retry download: %s", e)
-            self.show_message(f"重试失败: {e}", "error")
-            
+        # Start download
+        self.download_draft(draft, save_path)
+        
+        # Show message
+        self.show_message(f"重新下载草稿箱: {draft.name}", "info")
+        
     def show_message(self, message, message_type="info"):
         """
-        Show a message
+        Show a message in the main window
         
         Args:
             message (str): Message to display
             message_type (str): Type of message (info, success, warning, error)
         """
         if hasattr(self.parent, 'show_message'):
-            self.parent.show_message(message, message_type) 
+            self.parent.show_message(message, message_type)
+        else:
+            # Create InfoBar if parent doesn't have show_message
+            icon = None
+            title = "信息"
+            
+            if message_type == "info":
+                title = "信息"
+                icon = FluentIcon.INFORMATION
+            elif message_type == "success":
+                title = "成功"
+                icon = FluentIcon.COMPLETED
+            elif message_type == "warning":
+                title = "警告"
+                icon = FluentIcon.WARNING
+            elif message_type == "error":
+                title = "错误" 
+                icon = FluentIcon.ERROR
+            
+            # Show InfoBar directly
+            InfoBar.success(
+                title=title,
+                content=message,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            ) 

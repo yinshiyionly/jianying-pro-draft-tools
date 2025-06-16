@@ -277,3 +277,82 @@ A:
 ## 国际化支持
 
 本应用程序默认使用中文界面，但已准备好支持多语言。翻译文件位于`resources/translations/`目录。
+
+## 项目介绍
+
+草稿箱管理系统是一个基于PyQt6开发的桌面应用程序，用于管理剪映专业版的草稿箱文件。
+
+## 开发环境
+
+- Python 3.8+
+- PyQt6
+- Windows 10/11
+
+## 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+## 运行应用
+
+```bash
+python main.py
+```
+
+## 打包为Windows可执行文件
+
+### 方法一：使用build.py脚本
+
+1. 确保已安装PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+
+2. 在Windows环境中运行打包脚本:
+   ```bash
+   python build.py
+   ```
+
+3. 打包完成后，可执行文件将位于`dist/草稿箱管理系统/草稿箱管理系统.exe`
+
+### 方法二：使用spec文件
+
+1. 确保已安装PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+
+2. 根据项目结构修改`pyinstaller_spec.spec`文件中的资源路径
+
+3. 使用spec文件构建:
+   ```bash
+   pyinstaller pyinstaller_spec.spec
+   ```
+
+4. 打包完成后，可执行文件将位于`dist/草稿箱管理系统/草稿箱管理系统.exe`
+
+### 方法三：直接使用PyInstaller命令
+
+```bash
+pyinstaller --name "草稿箱管理系统" --windowed --icon=assets/icon.ico --add-data "assets;assets" --hidden-import PyQt6.QtSvg --hidden-import PyQt6.QtXml main.py
+```
+
+## 注意事项
+
+1. 字体问题：如果您在WSL或Linux环境中开发，可能需要安装中文字体:
+   ```bash
+   sudo apt install fonts-wqy-microhei fonts-wqy-zenhei fonts-noto-cjk
+   ```
+
+2. 打包问题：打包时请确保所有资源文件（如图片、配置文件等）都已正确添加到打包配置中。
+
+3. 图标文件：打包前请确保`assets/icon.ico`文件存在，或修改打包命令中的图标路径。
+
+## 常见问题解决
+
+1. 如果打包后的程序运行出现"找不到模块"错误，请检查并添加缺失的hidden-import。
+
+2. 如果中文显示为方块，请检查Windows系统是否安装了相应的中文字体。
+
+3. 如果需要创建安装程序，可以使用Inno Setup工具。

@@ -5,14 +5,16 @@ import os
 import sys
 import logging
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication,
+    QMessageBox, QSystemTrayIcon, QMenu
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QSettings
 from PyQt6.QtGui import QIcon, QAction
 
 from qfluentwidgets import (
     NavigationInterface, NavigationItemPosition, MSFluentWindow,
-    SubtitleLabel, setTheme, Theme, FluentIcon, InfoBar, InfoBarPosition
+    SubtitleLabel, setTheme, Theme, FluentIcon, InfoBar, InfoBarPosition,
+    MessageBox
 )
 from config.settings import get_setting, get_int_setting, get_bool_setting
 from ui.sidebar import Sidebar
@@ -181,16 +183,16 @@ class MainWindow(MSFluentWindow):
         """
         # Check if confirmation is required
         if get_bool_setting('CONFIRM_EXIT', True):
-            # Ask for confirmation
-            reply = QMessageBox.question(
-                self,
+            # 使用Fluent风格的对话框
+            if MessageBox(
                 "确认退出",
                 "确定要退出应用程序吗？",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
-            
-            if reply == QMessageBox.StandardButton.No:
+                self
+            ).exec():
+                # 用户点击了确认按钮
+                pass
+            else:
+                # 用户取消退出
                 event.ignore()
                 return
                 

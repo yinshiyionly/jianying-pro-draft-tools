@@ -5,7 +5,8 @@ import sys
 import traceback
 import logging
 from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtWidgets import QMessageBox
+from qfluentwidgets import MessageBox
 from config.settings import get_bool_setting
 
 class ExceptionHandler(QObject):
@@ -58,17 +59,19 @@ class ExceptionHandler(QObject):
             message (str): Error message
             traceback_str (str): Formatted traceback
         """
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle("应用程序错误")
-        msg_box.setText("发生了一个未处理的错误")
-        msg_box.setInformativeText(message)
+        # 使用Fluent风格的对话框
+        dlg = MessageBox(
+            "应用程序错误",
+            "发生了一个未处理的错误:\n" + message,
+            self.parent()
+        )
         
         if self.show_detailed_errors:
-            msg_box.setDetailedText(traceback_str)
+            # 添加详细信息到对话框
+            # 注意：Fluent MessageBox目前不支持详细信息，未来可能需要自定义
+            pass
             
-        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg_box.exec()
+        dlg.exec()
         
     def handle_database_error(self, error):
         """
@@ -147,15 +150,13 @@ class ExceptionHandler(QObject):
         Returns:
             bool: True if user clicked Retry, False otherwise
         """
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setWindowTitle(title)
-        msg_box.setText(message)
-        msg_box.setStandardButtons(
-            QMessageBox.StandardButton.Retry | 
-            QMessageBox.StandardButton.Cancel
+        # 使用Fluent风格的对话框
+        dlg = MessageBox(
+            title,
+            message,
+            self.parent()
         )
-        return msg_box.exec() == QMessageBox.StandardButton.Retry
+        return dlg.exec()
 
 def setup_exception_handler(app):
     """

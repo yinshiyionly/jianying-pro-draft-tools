@@ -4,13 +4,19 @@
 import os
 import logging
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QGroupBox, QFormLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QMenu, QComboBox, QCheckBox,
-    QSpinBox, QSizePolicy, QToolButton, QDialog, QTextEdit, QDialogButtonBox
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QMenu, QDialog, QTextEdit, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, pyqtSlot, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QIcon, QFont, QAction
+
+from qfluentwidgets import (
+    LineEdit, PushButton, ComboBox, CheckBox, SpinBox,
+    CardWidget, TableWidget, FluentIcon, InfoBar,
+    InfoBarPosition, StrongBodyLabel, BodyLabel,
+    SearchLineEdit, MessageBox
+)
 
 from models.draft_model import DraftModel
 from services.draft_service import DraftService
@@ -98,42 +104,77 @@ class DraftDetailsDialog(QDialog):
         
         # Create layout
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+        
+        # Create details card
+        details_card = CardWidget(self)
+        details_layout = QVBoxLayout(details_card)
+        details_layout.setContentsMargins(20, 20, 20, 20)
+        details_layout.setSpacing(10)
+        
+        # Add card title
+        title_label = StrongBodyLabel("草稿箱信息", details_card)
+        details_layout.addWidget(title_label)
         
         # Create form layout for details
-        form_layout = QFormLayout()
+        form_widget = QWidget(details_card)
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+        form_layout.setSpacing(8)
         
-        # Add details
-        form_layout.addRow("UUID:", QLabel(self.draft.uuid))
-        form_layout.addRow("名称:", QLabel(self.draft.name))
-        form_layout.addRow("描述:", QLabel(self.draft.description))
-        form_layout.addRow("文件数量:", QLabel(str(self.draft.file_count)))
-        form_layout.addRow("总大小:", QLabel(self.draft.get_formatted_size()))
-        form_layout.addRow("状态:", QLabel(self.draft.get_status_display()))
-        form_layout.addRow("创建时间:", QLabel(self.draft.created_at.strftime("%Y-%m-%d %H:%M:%S")))
-        form_layout.addRow("更新时间:", QLabel(self.draft.updated_at.strftime("%Y-%m-%d %H:%M:%S")))
-        form_layout.addRow("设备名称:", QLabel(self.draft.machine_name))
-        form_layout.addRow("本地路径:", QLabel(self.draft.local_path))
+        # Add details with label/value pairs
+        detail_pairs = [
+            ("UUID:", self.draft.uuid),
+            ("名称:", self.draft.name),
+            ("描述:", self.draft.description),
+            ("文件数量:", str(self.draft.file_count)),
+            ("总大小:", self.draft.get_formatted_size()),
+            ("状态:", self.draft.get_status_display()),
+            ("创建时间:", self.draft.created_at.strftime("%Y-%m-%d %H:%M:%S")),
+            ("更新时间:", self.draft.updated_at.strftime("%Y-%m-%d %H:%M:%S")),
+            ("设备名称:", self.draft.machine_name),
+            ("本地路径:", self.draft.local_path)
+        ]
         
         if self.draft.error_message:
-            form_layout.addRow("错误信息:", QLabel(self.draft.error_message))
-            
-        # Add form layout to main layout
-        layout.addLayout(form_layout)
+            detail_pairs.append(("错误信息:", self.draft.error_message))
         
-        # Add remote URLs
-        if self.draft.remote_urls:
-            urls_group = QGroupBox("远程URL")
-            urls_layout = QVBoxLayout(urls_group)
+        for label_text, value_text in detail_pairs:
+            item_layout = QHBoxLayout()
             
-            urls_text = QTextEdit()
+            label = BodyLabel(label_text, form_widget)
+            label.setMinimumWidth(100)
+            item_layout.addWidget(label)
+            
+            value = BodyLabel(value_text, form_widget)
+            value.setWordWrap(True)
+            item_layout.addWidget(value, 1)
+            
+            form_layout.addLayout(item_layout)
+        
+        details_layout.addWidget(form_widget)
+        layout.addWidget(details_card)
+        
+        # Add remote URLs if available
+        if self.draft.remote_urls:
+            urls_card = CardWidget(self)
+            urls_layout = QVBoxLayout(urls_card)
+            urls_layout.setContentsMargins(20, 20, 20, 20)
+            urls_layout.setSpacing(10)
+            
+            urls_title = StrongBodyLabel("远程URL", urls_card)
+            urls_layout.addWidget(urls_title)
+            
+            urls_text = QTextEdit(urls_card)
             urls_text.setReadOnly(True)
             urls_text.setText("\n".join(self.draft.remote_urls))
             urls_layout.addWidget(urls_text)
             
-            layout.addWidget(urls_group)
+            layout.addWidget(urls_card)
             
         # Add button box
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
@@ -173,42 +214,62 @@ class DraftListPanel(QWidget):
         """Set up the user interface"""
         # Create main layout
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
         
-        # Create search and filter group
-        filter_group = QGroupBox("搜索和筛选")
-        filter_layout = QHBoxLayout(filter_group)
+        # Create search and filter card
+        filter_card = CardWidget(self)
+        filter_layout = QVBoxLayout(filter_card)
+        filter_layout.setContentsMargins(20, 20, 20, 20)
+        filter_layout.setSpacing(16)
+        
+        # Add card title
+        filter_title = StrongBodyLabel("搜索和筛选", filter_card)
+        filter_layout.addWidget(filter_title)
+        
+        # Add search and filter controls
+        controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(8)
         
         # Add search input
-        self.search_input = QLineEdit()
+        self.search_input = SearchLineEdit(filter_card)
         self.search_input.setPlaceholderText("搜索草稿箱...")
-        self.search_input.returnPressed.connect(self.search_drafts)
-        filter_layout.addWidget(self.search_input)
-        
-        # Add search button
-        self.search_button = QPushButton("搜索")
-        self.search_button.clicked.connect(self.search_drafts)
-        filter_layout.addWidget(self.search_button)
+        self.search_input.textChanged.connect(self.search_drafts)
+        controls_layout.addWidget(self.search_input, 1)
         
         # Add status filter
-        self.status_filter = QComboBox()
+        self.status_filter = ComboBox(filter_card)
         self.status_filter.addItem("所有状态", "")
         self.status_filter.addItem("等待中", "pending")
         self.status_filter.addItem("下载中", "downloading")
         self.status_filter.addItem("已完成", "completed")
         self.status_filter.addItem("失败", "failed")
         self.status_filter.currentIndexChanged.connect(self.filter_drafts)
-        filter_layout.addWidget(self.status_filter)
+        controls_layout.addWidget(self.status_filter)
         
         # Add refresh button
-        self.refresh_button = QPushButton("刷新")
+        self.refresh_button = PushButton("刷新", filter_card)
+        self.refresh_button.setIcon(FluentIcon.SYNC)
         self.refresh_button.clicked.connect(self.load_drafts)
-        filter_layout.addWidget(self.refresh_button)
+        controls_layout.addWidget(self.refresh_button)
         
-        # Add filter group to main layout
-        layout.addWidget(filter_group)
+        filter_layout.addLayout(controls_layout)
+        
+        # Add filter card to main layout
+        layout.addWidget(filter_card)
+        
+        # Create drafts list card
+        list_card = CardWidget(self)
+        list_layout = QVBoxLayout(list_card)
+        list_layout.setContentsMargins(20, 20, 20, 20)
+        list_layout.setSpacing(16)
+        
+        # Add card title
+        list_title = StrongBodyLabel("草稿箱列表", list_card)
+        list_layout.addWidget(list_title)
         
         # Create table widget
-        self.table = QTableWidget()
+        self.table = TableWidget(list_card)
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels(["名称", "描述", "文件数量", "大小", "状态", "创建时间", "操作"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -224,29 +285,31 @@ class DraftListPanel(QWidget):
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.show_context_menu)
         
-        # Add table to main layout
-        layout.addWidget(self.table)
+        list_layout.addWidget(self.table)
         
         # Create pagination layout
         pagination_layout = QHBoxLayout()
+        pagination_layout.setSpacing(8)
         
         # Add page navigation buttons
-        self.prev_button = QPushButton("上一页")
+        self.prev_button = PushButton("上一页", list_card)
+        self.prev_button.setIcon(FluentIcon.CHEVRON_LEFT)
         self.prev_button.clicked.connect(self.prev_page)
         pagination_layout.addWidget(self.prev_button)
         
-        self.page_label = QLabel("第 1 页 / 共 1 页")
+        self.page_label = BodyLabel("第 1 页 / 共 1 页", list_card)
         pagination_layout.addWidget(self.page_label)
         
-        self.next_button = QPushButton("下一页")
+        self.next_button = PushButton("下一页", list_card)
+        self.next_button.setIcon(FluentIcon.CHEVRON_RIGHT)
         self.next_button.clicked.connect(self.next_page)
         pagination_layout.addWidget(self.next_button)
         
         # Add page size selector
         pagination_layout.addStretch()
-        pagination_layout.addWidget(QLabel("每页显示:"))
+        pagination_layout.addWidget(BodyLabel("每页显示:", list_card))
         
-        self.page_size_selector = QComboBox()
+        self.page_size_selector = ComboBox(list_card)
         self.page_size_selector.addItem("10", 10)
         self.page_size_selector.addItem("20", 20)
         self.page_size_selector.addItem("50", 50)
@@ -255,15 +318,18 @@ class DraftListPanel(QWidget):
         self.page_size_selector.currentIndexChanged.connect(self.change_page_size)
         pagination_layout.addWidget(self.page_size_selector)
         
-        # Add pagination layout to main layout
-        layout.addLayout(pagination_layout)
+        list_layout.addLayout(pagination_layout)
+        
+        # Add list card to main layout
+        layout.addWidget(list_card)
         
     def load_drafts(self):
-        """Load drafts from the service"""
-        # Disable UI elements
+        """Load drafts from service"""
+        # Disable controls
         self.setEnabled(False)
         
-        # Get filter status
+        # Get search term and status filter
+        search_term = self.search_input.text().strip()
         status = self.status_filter.currentData()
         
         # Create worker thread
@@ -271,7 +337,7 @@ class DraftListPanel(QWidget):
             self.current_page,
             self.page_size,
             status,
-            None,
+            search_term,
             self
         )
         
@@ -284,41 +350,18 @@ class DraftListPanel(QWidget):
         
     def search_drafts(self):
         """Search drafts by term"""
-        # Get search term
-        search_term = self.search_input.text().strip()
-        
-        if not search_term:
-            self.load_drafts()
-            return
-            
-        # Disable UI elements
-        self.setEnabled(False)
-        
         # Reset to first page
         self.current_page = 1
         
-        # Create worker thread
-        self.worker = DraftListWorker(
-            self.current_page,
-            self.page_size,
-            None,
-            search_term,
-            self
-        )
-        
-        # Connect signals
-        self.worker.loaded.connect(self.on_drafts_loaded)
-        self.worker.failed.connect(self.on_drafts_load_failed)
-        
-        # Start worker
-        self.worker.start()
+        # Load drafts with search term
+        self.load_drafts()
         
     def filter_drafts(self):
         """Filter drafts by status"""
         # Reset to first page
         self.current_page = 1
         
-        # Reload drafts
+        # Load drafts with filter
         self.load_drafts()
         
     def prev_page(self):
@@ -326,15 +369,15 @@ class DraftListPanel(QWidget):
         if self.current_page > 1:
             self.current_page -= 1
             self.load_drafts()
-            
+        
     def next_page(self):
         """Go to next page"""
         if self.current_page < self.total_pages:
             self.current_page += 1
             self.load_drafts()
-            
+        
     def change_page_size(self):
-        """Change the number of items per page"""
+        """Change number of items per page"""
         self.page_size = self.page_size_selector.currentData()
         self.current_page = 1
         self.load_drafts()
@@ -344,7 +387,7 @@ class DraftListPanel(QWidget):
         Handle drafts loaded
         
         Args:
-            drafts (List[DraftModel]): List of draft models
+            drafts (list): List of DraftModel objects
         """
         # Clear table
         self.table.setRowCount(0)
@@ -356,8 +399,11 @@ class DraftListPanel(QWidget):
         # Update pagination
         self.update_pagination()
         
-        # Enable UI elements
+        # Enable controls
         self.setEnabled(True)
+        
+        # Clean up worker
+        self.worker = None
         
     def on_drafts_load_failed(self, error_message):
         """
@@ -367,19 +413,25 @@ class DraftListPanel(QWidget):
             error_message (str): Error message
         """
         # Show error message
-        self.show_message(f"加载草稿箱列表失败: {error_message}", "error")
+        self.show_message(f"加载草稿箱失败: {error_message}", "error")
         
-        # Enable UI elements
+        # Enable controls
         self.setEnabled(True)
+        
+        # Clean up worker
+        self.worker = None
         
     def add_draft_to_table(self, draft):
         """
-        Add a draft to the table
+        Add draft to table
         
         Args:
             draft (DraftModel): Draft model
         """
+        # Get current row count
         row = self.table.rowCount()
+        
+        # Insert new row
         self.table.insertRow(row)
         
         # Set name
@@ -393,41 +445,43 @@ class DraftListPanel(QWidget):
         
         # Set file count
         file_count_item = QTableWidgetItem(str(draft.file_count))
+        file_count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 2, file_count_item)
         
         # Set size
         size_item = QTableWidgetItem(draft.get_formatted_size())
+        size_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 3, size_item)
         
         # Set status
         status_item = QTableWidgetItem(draft.get_status_display())
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 4, status_item)
         
-        # Set created time
-        created_time_item = QTableWidgetItem(draft.created_at.strftime("%Y-%m-%d %H:%M:%S"))
-        self.table.setItem(row, 5, created_time_item)
+        # Set created at
+        created_at_item = QTableWidgetItem(draft.created_at.strftime("%Y-%m-%d %H:%M"))
+        created_at_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.table.setItem(row, 5, created_at_item)
         
-        # Set actions
+        # Create action buttons
         action_widget = QWidget()
         action_layout = QHBoxLayout(action_widget)
-        action_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.setContentsMargins(5, 2, 5, 2)
+        action_layout.setSpacing(4)
         
-        # Add details button
-        details_button = QToolButton()
-        details_button.setText("详情")
-        details_button.clicked.connect(lambda: self.show_draft_details(draft))
+        details_button = PushButton("详情", action_widget)
+        details_button.setIcon(FluentIcon.INFO)
+        details_button.clicked.connect(lambda: self.show_draft_details_by_uuid(draft.uuid))
         action_layout.addWidget(details_button)
         
-        # Add open button if completed
-        if draft.status == "completed" and draft.local_path:
-            open_button = QToolButton()
-            open_button.setText("打开")
-            open_button.clicked.connect(lambda: self.open_draft(draft))
-            action_layout.addWidget(open_button)
-            
-        # Add delete button
-        delete_button = QToolButton()
-        delete_button.setText("删除")
+        open_button = PushButton("打开", action_widget)
+        open_button.setIcon(FluentIcon.FOLDER)
+        open_button.clicked.connect(lambda: self.open_draft_by_uuid(draft.uuid))
+        open_button.setEnabled(draft.status == "completed")
+        action_layout.addWidget(open_button)
+        
+        delete_button = PushButton("删除", action_widget)
+        delete_button.setIcon(FluentIcon.DELETE)
         delete_button.clicked.connect(lambda: self.delete_draft(draft.uuid))
         action_layout.addWidget(delete_button)
         
@@ -435,35 +489,34 @@ class DraftListPanel(QWidget):
         
     def update_pagination(self):
         """Update pagination controls"""
-        # TODO: Get total count from API
-        # For now, just estimate based on current page and items
-        if self.table.rowCount() < self.page_size:
-            self.total_pages = self.current_page
-        else:
-            self.total_pages = self.current_page + 1
-            
+        # Calculate total pages
+        total_drafts = self.draft_service.get_total_drafts_count()
+        self.total_pages = (total_drafts + self.page_size - 1) // self.page_size
+        
         # Update page label
         self.page_label.setText(f"第 {self.current_page} 页 / 共 {self.total_pages} 页")
         
-        # Enable/disable navigation buttons
+        # Update button states
         self.prev_button.setEnabled(self.current_page > 1)
         self.next_button.setEnabled(self.current_page < self.total_pages)
         
     def show_context_menu(self, position):
         """
-        Show context menu for table item
+        Show context menu for draft
         
         Args:
-            position (QPoint): Position where the context menu should be shown
+            position (QPoint): Position where to show the menu
         """
-        # Get selected row
+        # Get selected item
         row = self.table.rowAt(position.y())
         if row < 0:
             return
             
         # Get draft UUID
         uuid = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-        
+        if not uuid:
+            return
+            
         # Create menu
         menu = QMenu(self)
         
@@ -472,21 +525,21 @@ class DraftListPanel(QWidget):
         details_action.triggered.connect(lambda: self.show_draft_details_by_uuid(uuid))
         menu.addAction(details_action)
         
-        # Add open action if completed
-        status = self.table.item(row, 4).text()
-        if status == "已完成":
-            open_action = QAction("打开文件夹", self)
+        # Get draft to check status
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        if draft and draft.status == "completed":
+            open_action = QAction("打开草稿箱", self)
             open_action.triggered.connect(lambda: self.open_draft_by_uuid(uuid))
             menu.addAction(open_action)
             
         menu.addSeparator()
         
-        delete_action = QAction("删除", self)
+        delete_action = QAction("删除草稿箱", self)
         delete_action.triggered.connect(lambda: self.delete_draft(uuid))
         menu.addAction(delete_action)
         
         # Show menu
-        menu.exec(self.table.viewport().mapToGlobal(position))
+        menu.exec(self.table.mapToGlobal(position))
         
     def show_draft_details(self, draft):
         """
@@ -505,78 +558,129 @@ class DraftListPanel(QWidget):
         Args:
             uuid (str): Draft UUID
         """
-        try:
-            draft = self.draft_service.get_draft_by_uuid(uuid)
-            if draft:
-                self.show_draft_details(draft)
-            else:
-                self.show_message("未找到草稿箱", "error")
-        except Exception as e:
-            self.logger.error("Failed to get draft details: %s", e)
-            self.show_message(f"获取草稿箱详情失败: {e}", "error")
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            self.show_message("找不到草稿箱", "error")
+            return
             
+        # Show details
+        self.show_draft_details(draft)
+        
     def open_draft(self, draft):
         """
-        Open draft folder
+        Open draft in file explorer
         
         Args:
             draft (DraftModel): Draft model
         """
+        if not draft.local_path or not os.path.exists(draft.local_path):
+            self.show_message("草稿箱本地路径不存在", "error")
+            return
+            
         try:
-            if draft.local_path and os.path.exists(draft.local_path):
+            # Open folder
+            if os.name == 'nt':  # Windows
                 os.startfile(draft.local_path)
-            else:
-                self.show_message("草稿箱文件夹不存在", "error")
+            elif os.name == 'posix':  # macOS, Linux
+                import subprocess
+                subprocess.Popen(['xdg-open', draft.local_path])
+                
         except Exception as e:
             self.logger.error("Failed to open draft: %s", e)
-            self.show_message(f"打开草稿箱失败: {e}", "error")
+            self.show_message(f"无法打开草稿箱: {e}", "error")
             
     def open_draft_by_uuid(self, uuid):
         """
-        Open draft folder by UUID
+        Open draft in file explorer by UUID
         
         Args:
             uuid (str): Draft UUID
         """
-        try:
-            draft = self.draft_service.get_draft_by_uuid(uuid)
-            if draft:
-                self.open_draft(draft)
-            else:
-                self.show_message("未找到草稿箱", "error")
-        except Exception as e:
-            self.logger.error("Failed to open draft: %s", e)
-            self.show_message(f"打开草稿箱失败: {e}", "error")
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            self.show_message("找不到草稿箱", "error")
+            return
             
+        # Open draft
+        self.open_draft(draft)
+        
     def delete_draft(self, uuid):
         """
-        Delete a draft
+        Delete draft
         
         Args:
             uuid (str): Draft UUID
         """
+        # Get draft
+        draft = self.draft_service.get_draft_by_uuid(uuid)
+        
+        if not draft:
+            self.show_message("找不到草稿箱", "error")
+            return
+            
+        # Confirm deletion
+        ok = MessageBox(
+            "确认删除",
+            f"确定要删除草稿箱 \"{draft.name}\" 吗？\n\n此操作不可撤销。",
+            self
+        ).exec()
+        
+        if not ok:
+            return
+            
         try:
-            # Delete from database
+            # Delete draft
             self.draft_service.delete_draft(uuid)
             
-            # Remove from table
-            for row in range(self.table.rowCount()):
-                if self.table.item(row, 0).data(Qt.ItemDataRole.UserRole) == uuid:
-                    self.table.removeRow(row)
-                    break
-                    
-            self.show_message("草稿箱已删除", "success")
+            # Reload drafts
+            self.load_drafts()
+            
+            # Show success message
+            self.show_message(f"草稿箱 \"{draft.name}\" 已删除", "success")
+            
         except Exception as e:
             self.logger.error("Failed to delete draft: %s", e)
             self.show_message(f"删除草稿箱失败: {e}", "error")
             
     def show_message(self, message, message_type="info"):
         """
-        Show a message
+        Show a message in the main window
         
         Args:
             message (str): Message to display
             message_type (str): Type of message (info, success, warning, error)
         """
         if hasattr(self.parent, 'show_message'):
-            self.parent.show_message(message, message_type) 
+            self.parent.show_message(message, message_type)
+        else:
+            # Create InfoBar if parent doesn't have show_message
+            icon = None
+            title = "信息"
+            
+            if message_type == "info":
+                title = "信息"
+                icon = FluentIcon.INFORMATION
+            elif message_type == "success":
+                title = "成功"
+                icon = FluentIcon.COMPLETED
+            elif message_type == "warning":
+                title = "警告"
+                icon = FluentIcon.WARNING
+            elif message_type == "error":
+                title = "错误" 
+                icon = FluentIcon.ERROR
+            
+            # Show InfoBar directly
+            InfoBar.success(
+                title=title,
+                content=message,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            ) 

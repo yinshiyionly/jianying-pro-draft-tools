@@ -8,98 +8,6 @@ from PyQt6.QtWidgets import QMessageBox, QLabel, QVBoxLayout, QWidget
 from PyQt6.QtGui import QColor, QPalette, QFont
 from config.settings import get_bool_setting
 
-class ToastNotification(QWidget):
-    """Toast notification widget that appears at the bottom right of the screen"""
-    
-    def __init__(self, parent=None, message="", message_type="info", duration=3000):
-        super().__init__(parent)
-        
-        # Set window flags
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | 
-            Qt.WindowType.Tool |
-            Qt.WindowType.WindowStaysOnTopHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        
-        # Set up layout
-        layout = QVBoxLayout(self)
-        
-        # Create message label
-        self.label = QLabel(message)
-        self.label.setWordWrap(True)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Set font
-        font = QFont()
-        font.setPointSize(10)
-        self.label.setFont(font)
-        
-        # Add label to layout
-        layout.addWidget(self.label)
-        
-        # Set style based on message type
-        self.set_style(message_type)
-        
-        # Set size
-        self.setMinimumWidth(300)
-        self.setMaximumWidth(400)
-        
-        # Set up timer to close the notification
-        self.timer = QTimer(self)
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.close)
-        self.timer.start(duration)
-        
-        # Position the notification
-        self.position_notification()
-        
-    def set_style(self, message_type):
-        """Set the style of the notification based on the message type"""
-        base_style = """
-            QWidget {
-                border-radius: 6px;
-                padding: 10px;
-            }
-        """
-        
-        if message_type == "info":
-            style = base_style + """
-                background-color: #2196F3;
-                color: white;
-            """
-        elif message_type == "success":
-            style = base_style + """
-                background-color: #4CAF50;
-                color: white;
-            """
-        elif message_type == "warning":
-            style = base_style + """
-                background-color: #FF9800;
-                color: white;
-            """
-        elif message_type == "error":
-            style = base_style + """
-                background-color: #F44336;
-                color: white;
-            """
-        else:
-            style = base_style + """
-                background-color: #2196F3;
-                color: white;
-            """
-            
-        self.setStyleSheet(style)
-        
-    def position_notification(self):
-        """Position the notification at the bottom right of the screen"""
-        if self.parentWidget():
-            parent_rect = self.parentWidget().geometry()
-            x = parent_rect.width() - self.width() - 20
-            y = parent_rect.height() - self.height() - 20
-            self.move(x, y)
-
 class MessageHandler(QObject):
     """Message handler for displaying various types of notifications"""
     
@@ -137,6 +45,99 @@ class MessageHandler(QObject):
             
         # Get the next toast from the queue
         message, message_type, duration = self.toast_queue.pop(0)
+        
+        # 在函数内部创建ToastNotification类的实例
+        class ToastNotification(QWidget):
+            """Toast notification widget that appears at the bottom right of the screen"""
+            
+            def __init__(self, parent=None, message="", message_type="info", duration=3000):
+                super().__init__(parent)
+                
+                # Set window flags
+                self.setWindowFlags(
+                    Qt.WindowType.FramelessWindowHint | 
+                    Qt.WindowType.Tool |
+                    Qt.WindowType.WindowStaysOnTopHint
+                )
+                self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+                self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+                
+                # Set up layout
+                layout = QVBoxLayout(self)
+                
+                # Create message label
+                self.label = QLabel(message)
+                self.label.setWordWrap(True)
+                self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Set font
+                font = QFont()
+                font.setPointSize(10)
+                self.label.setFont(font)
+                
+                # Add label to layout
+                layout.addWidget(self.label)
+                
+                # Set style based on message type
+                self.set_style(message_type)
+                
+                # Set size
+                self.setMinimumWidth(300)
+                self.setMaximumWidth(400)
+                
+                # Set up timer to close the notification
+                self.timer = QTimer(self)
+                self.timer.setSingleShot(True)
+                self.timer.timeout.connect(self.close)
+                self.timer.start(duration)
+                
+                # Position the notification
+                self.position_notification()
+                
+            def set_style(self, message_type):
+                """Set the style of the notification based on the message type"""
+                base_style = """
+                    QWidget {
+                        border-radius: 6px;
+                        padding: 10px;
+                    }
+                """
+                
+                if message_type == "info":
+                    style = base_style + """
+                        background-color: #2196F3;
+                        color: white;
+                    """
+                elif message_type == "success":
+                    style = base_style + """
+                        background-color: #4CAF50;
+                        color: white;
+                    """
+                elif message_type == "warning":
+                    style = base_style + """
+                        background-color: #FF9800;
+                        color: white;
+                    """
+                elif message_type == "error":
+                    style = base_style + """
+                        background-color: #F44336;
+                        color: white;
+                    """
+                else:
+                    style = base_style + """
+                        background-color: #2196F3;
+                        color: white;
+                    """
+                    
+                self.setStyleSheet(style)
+                
+            def position_notification(self):
+                """Position the notification at the bottom right of the screen"""
+                if self.parentWidget():
+                    parent_rect = self.parentWidget().geometry()
+                    x = parent_rect.width() - self.width() - 20
+                    y = parent_rect.height() - self.height() - 20
+                    self.move(x, y)
         
         # Create and show the toast
         toast = ToastNotification(
